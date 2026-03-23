@@ -5,29 +5,31 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
+
+// Increase buffer size to allow large audio file uploads (up to 100MB)
 const io = new Server(server, {
-    maxHttpBufferSize: 1e8 // Allow large audio files (up to 100MB)
+    maxHttpBufferSize: 1e8 
 });
 
-// 1. Serve static files from the 'public' directory
+// 1. Serve static files from the 'public' folder
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 2. EXPLICIT ROOT ROUTE: This fixes the "Cannot GET /" error!
-// When someone visits your main link, it will serve 'index.html' from your public folder.
+// 2. Redirect root url (/) straight to room.html
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'room.html'));
+    res.redirect('/room.html');
 });
 
-// Store rooms, tracks, and playback state
+// Store rooms, uploaded tracks, and current playback state
 const rooms = {};
 
 io.on('connection', (socket) => {
-    // Precise Clock Synchronization
+    
+    // -- Precise Clock Synchronization --
     socket.on('ping_clock', (clientTime, callback) => {
         callback(clientTime, Date.now());
     });
 
-    // Join Room Logic
+    // -- Join Room Logic --
     socket.on('join_room', ({ roomCode, role, user }) => {
         socket.join(roomCode);
         socket.roomCode = roomCode;
@@ -42,8 +44,8 @@ io.on('connection', (socket) => {
             rooms[roomCode].host = socket.id;
         } else {
             rooms[roomCode].listeners.push({ id: socket.id, ...user });
-
-            // Send all previously uploaded tracks to the late-joining listener
+            
+            // LATE JOINER FIX: Send all previously uploaded tracks to the new listener
             if (rooms[roomCode].tracks.length > 0) {
                 rooms[roomCode].tracks.forEach(track => {
                     socket.emit('receive_track', track);
@@ -54,31 +56,33 @@ io.on('connection', (socket) => {
             if (rooms[roomCode].state) {
                 setTimeout(() => {
                     socket.emit('sync_action', rooms[roomCode].state);
-                }, 1500);
+                }, 1500); 
             }
         }
 
-        // Update listener counts for everyone
+        // Update listener counts for everyone in the room
         io.to(roomCode).emit('update_listeners', rooms[roomCode].listeners);
     });
 
-    // Save track and forward to listeners
+    // -- Audio File Sharing --
+    // Save track to memory and forward to listeners
     socket.on('upload_track', (data) => {
         if (rooms[socket.roomCode]) {
-            rooms[socket.roomCode].tracks.push(data); // Save for late joiners
+            rooms[socket.roomCode].tracks.push(data); 
         }
         socket.to(socket.roomCode).emit('receive_track', data);
     });
 
-    // Save playback state and forward to listeners
+    // -- Playback Synchronization --
+    // Save playback state (play/pause/seek) and forward to listeners
     socket.on('sync_action', (data) => {
         if (rooms[socket.roomCode]) {
-            rooms[socket.roomCode].state = data; // Save if host paused or played
+            rooms[socket.roomCode].state = data; 
         }
         socket.to(socket.roomCode).emit('sync_action', data);
     });
 
-    // Cleanup when someone leaves
+    // -- Cleanup on Disconnect --
     socket.on('disconnect', () => {
         if (socket.roomCode && rooms[socket.roomCode]) {
             if (socket.role === 'listener') {
@@ -86,7 +90,7 @@ io.on('connection', (socket) => {
                 io.to(socket.roomCode).emit('update_listeners', rooms[socket.roomCode].listeners);
             } else if (socket.role === 'host') {
                 io.to(socket.roomCode).emit('host_left');
-                delete rooms[socket.roomCode]; // Clean up room memory when host leaves
+                delete rooms[socket.roomCode]; // Clear room memory when host leaves
             }
         }
     });
@@ -95,5 +99,5 @@ io.on('connection', (socket) => {
 // Start the server
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`🎵 Audio Sync Server running on port ${PORT}`);
+    console.log(`🎵 VANI Server running on port ${PORT}`);
 });
