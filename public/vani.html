@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VANI — Synchronized Audio Experience</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050505;
+    --surface: #0f0f0f;
+    --surface2: #1a1a1a;
+    --border: rgba(255,255,255,0.08);
+    --border-bright: rgba(255,255,255,0.18);
+    --text: #ffffff;
+    --text-dim: rgba(255,255,255,0.5);
+    --text-faint: rgba(255,255,255,0.2);
+    --accent: #ffffff;
+    --glow: rgba(255,255,255,0.15);
+    --grad1: linear-gradient(135deg, #1a1a1a 0%, #050505 50%, #111 100%);
+    --grad-hero: linear-gradient(160deg, #1c1c1c 0%, #000 40%, #0a0a0a 100%);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Poppins', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* CUSTOM CURSOR */
+  .cursor {
+    position: fixed;
+    width: 10px; height: 10px;
+    background: white;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    transition: transform 0.1s ease;
+    mix-blend-mode: difference;
+  }
+  .cursor-ring {
+    position: fixed;
+    width: 36px; height: 36px;
+    border: 1px solid rgba(255,255,255,0.5);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9998;
+    transform: translate(-50%, -50%);
+    transition: all 0.15s ease;
+    mix-blend-mode: difference;
+  }
+
+  /* NOISE OVERLAY */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.4;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 24px 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid transparent;
+    transition: all 0.4s ease;
+    backdrop-filter: blur(0px);
+  }
+  nav.scrolled {
+    border-bottom-color: var(--border);
+    backdrop-filter: blur(20px);
+    background: rgba(5,5,5,0.8);
+    padding: 16px 60px;
+  }
+  .nav-logo {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.6) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .nav-logo span { color: rgba(255,255,255,0.3); -webkit-text-fill-color: rgba(255,255,255,0.3); }
+  .nav-links {
+    display: flex;
+    gap: 40px;
+    list-style: none;
+  }
+  .nav-links a {
+    text-decoration: none;
+    color: var(--text-dim);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    transition: color 0.3s;
+  }
+  .nav-links a:hover { color: white; }
+  .nav-cta {
+    padding: 10px 24px;
+    background: white;
+    color: black;
+    border: none;
+    border-radius: 100px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: none;
+    transition: all 0.3s ease;
+    letter-spacing: 0.3px;
+  }
+  .nav-cta:hover { background: rgba(255,255,255,0.85); transform: translateY(-1px); }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 120px 40px 80px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* BACKGROUND WAVE ANIMATION */
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+  .hero-bg canvas {
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 100%; height: 100%;
+    opacity: 0.12;
+  }
+  .hero-bg::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(255,255,255,0.06) 0%, transparent 70%);
+  }
+
+  /* GRID LINES */
+  .grid-lines {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 80px 80px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 0%, transparent 100%);
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    border: 1px solid var(--border-bright);
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 40px;
+    position: relative;
+    z-index: 2;
+    animation: fadeInDown 1s ease both;
+  }
+  .hero-badge::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: white;
+    animation: pulse 2s ease infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+
+  .hero h1 {
+    font-size: clamp(56px, 10vw, 120px);
+    font-weight: 900;
+    line-height: 0.9;
+    letter-spacing: -4px;
+    position: relative;
+    z-index: 2;
+    animation: fadeInUp 1s 0.2s ease both;
+  }
+  .hero h1 .line1 {
+    display: block;
+    background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.7) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero h1 .line2 {
+    display: block;
+    background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.08) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .hero-sub {
+    margin-top: 32px;
+    font-size: 16px;
+    font-weight: 300;
+    color: var(--text-dim);
+    max-width: 480px;
+    line-height: 1.8;
+    position: relative;
+    z-index: 2;
+    animation: fadeInUp 1s 0.4s ease both;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 16px;
+    margin-top: 48px;
+    position: relative;
+    z-index: 2;
+    animation: fadeInUp 1s 0.6s ease both;
+  }
+  .btn-primary {
+    padding: 16px 40px;
+    background: white;
+    color: black;
+    border: none;
+    border-radius: 100px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: none;
+    transition: all 0.3s ease;
+    letter-spacing: 0.5px;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 20px 60px rgba(255,255,255,0.15); }
+  .btn-secondary {
+    padding: 16px 40px;
+    background: transparent;
+    color: white;
+    border: 1px solid var(--border-bright);
+    border-radius: 100px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: none;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-secondary:hover { border-color: rgba(255,255,255,0.4); background: rgba(255,255,255,0.04); }
+
+  /* LIVE WAVE VISUALIZER IN HERO */
+  .hero-visualizer {
+    position: relative;
+    z-index: 2;
+    margin-top: 80px;
+    width: min(700px, 90vw);
+    animation: fadeInUp 1s 0.8s ease both;
+  }
+  .visualizer-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 28px 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .visualizer-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  }
+  .vis-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .vis-title {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .vis-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .vis-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: white;
+    animation: pulse 1.5s ease infinite;
+  }
+  .wave-container {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 70px;
+    justify-content: center;
+  }
+  .wave-bar {
+    width: 3px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.3));
+    animation: waveAnim var(--dur) ease-in-out infinite;
+    animation-delay: var(--delay);
+  }
+  @keyframes waveAnim {
+    0%, 100% { height: 8px; opacity: 0.3; }
+    50% { height: var(--h); opacity: 1; }
+  }
+  .vis-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+  .vis-meta-item { font-size: 11px; color: var(--text-faint); }
+  .vis-meta-item span { color: white; font-weight: 600; }
+
+  /* LATENCY DISPLAY */
+  .latency-display {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+  }
+  .latency-label { font-size: 10px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--text-faint); }
+  .latency-bar-wrap { flex: 1; height: 2px; background: rgba(255,255,255,0.08); border-radius: 1px; overflow: hidden; }
+  .latency-bar-fill { height: 100%; background: white; border-radius: 1px; animation: latencyPulse 2s ease infinite; }
+  .latency-val { font-size: 11px; font-weight: 700; color: white; }
+  @keyframes latencyPulse {
+    0% { width: 0%; }
+    50% { width: 8%; }
+    100% { width: 0%; }
+  }
+
+  @keyframes fadeInDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* STATS */
+  .stats-section {
+    padding: 100px 60px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .stat-item {
+    background: var(--bg);
+    padding: 48px 40px;
+    text-align: center;
+    transition: background 0.3s;
+  }
+  .stat-item:hover { background: var(--surface); }
+  .stat-num {
+    font-size: 52px;
+    font-weight: 900;
+    letter-spacing: -2px;
+    background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.4) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: block;
+  }
+  .stat-label { font-size: 12px; font-weight: 500; color: var(--text-faint); letter-spacing: 1px; text-transform: uppercase; margin-top: 8px; }
+
+  /* FEATURES */
+  .features-section {
+    padding: 140px 60px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin-bottom: 20px;
+  }
+  .section-title {
+    font-size: clamp(36px, 5vw, 56px);
+    font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1.1;
+    max-width: 500px;
+    margin-bottom: 80px;
+  }
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    overflow: hidden;
+  }
+  .feature-card {
+    background: var(--bg);
+    padding: 48px 40px;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.3s;
+  }
+  .feature-card:hover { background: var(--surface); }
+  .feature-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 40px; height: 40px;
+    border-top: 1px solid var(--border-bright);
+    border-left: 1px solid var(--border-bright);
+  }
+  .feature-icon {
+    width: 48px; height: 48px;
+    background: var(--surface2);
+    border: 1px solid var(--border-bright);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    margin-bottom: 24px;
+  }
+  .feature-name {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    letter-spacing: -0.3px;
+  }
+  .feature-desc {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.8;
+    font-weight: 300;
+  }
+
+  /* HOW IT WORKS */
+  .how-section {
+    padding: 140px 60px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .how-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 100px;
+    align-items: center;
+  }
+  .steps-list { margin-top: 48px; }
+  .step-item {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 40px;
+    opacity: 0.5;
+    transition: opacity 0.3s;
+  }
+  .step-item:hover { opacity: 1; }
+  .step-num {
+    flex-shrink: 0;
+    width: 40px; height: 40px;
+    border: 1px solid var(--border-bright);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-dim);
+  }
+  .step-content-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+  .step-content-desc { font-size: 13px; color: var(--text-dim); line-height: 1.7; font-weight: 300; }
+
+  /* ROOM DEMO PREVIEW */
+  .room-preview {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+  }
+  .room-preview-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dot-row { display: flex; gap: 6px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-r { background: #3a3a3a; }
+  .dot-y { background: #3a3a3a; }
+  .dot-g { background: #3a3a3a; }
+  .room-preview-body { padding: 24px 20px; }
+  .preview-track {
+    background: var(--surface2);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .preview-track.active { border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.04); }
+  .track-thumb {
+    width: 42px; height: 42px;
+    background: var(--surface);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .track-info { flex: 1; min-width: 0; }
+  .track-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .track-artist { font-size: 11px; color: var(--text-faint); }
+  .track-time { font-size: 11px; color: var(--text-dim); font-weight: 500; }
+  .mini-wave {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 20px;
+  }
+  .mini-bar {
+    width: 2px;
+    background: rgba(255,255,255,0.6);
+    border-radius: 1px;
+    animation: waveAnim var(--dur) ease-in-out infinite;
+    animation-delay: var(--delay);
+  }
+  .preview-listeners {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    font-size: 11px;
+    color: var(--text-faint);
+  }
+  .listener-avatars { display: flex; }
+  .listener-avatar {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 2px solid var(--bg);
+    margin-left: -6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+  }
+  .listener-avatar:first-child { margin-left: 0; }
+
+  /* PLAYER SECTION */
+  .player-section {
+    padding: 140px 60px;
+    max-width: 900px;
+    margin: 0 auto;
+    text-align: center;
+  }
+  .player-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 28px;
+    padding: 48px;
+    margin-top: 60px;
+    position: relative;
+    overflow: hidden;
+  }
+  .player-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 50%; transform: translateX(-50%);
+    width: 60%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  }
+  .player-track-info { margin-bottom: 40px; }
+  .player-track-name {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+  }
+  .player-artist { font-size: 14px; color: var(--text-dim); font-weight: 400; }
+  .player-wave {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 80px;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+  .player-bar {
+    width: 4px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.2));
+    animation: waveAnim var(--dur) ease-in-out infinite;
+    animation-delay: var(--delay);
+  }
+  .player-progress-wrap {
+    position: relative;
+    height: 3px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+    margin-bottom: 8px;
+    cursor: none;
+    overflow: visible;
+  }
+  .player-progress-fill {
+    height: 100%;
+    background: white;
+    border-radius: 2px;
+    width: 35%;
+    position: relative;
+    transition: width 0.1s;
+  }
+  .player-progress-fill::after {
+    content: '';
+    position: absolute;
+    right: -5px;
+    top: -4px;
+    width: 11px; height: 11px;
+    background: white;
+    border-radius: 50%;
+  }
+  .player-times {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-faint);
+    margin-bottom: 36px;
+  }
+  .player-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    margin-bottom: 36px;
+  }
+  .ctrl-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 20px;
+    cursor: none;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+  }
+  .ctrl-btn:hover { color: white; transform: scale(1.1); }
+  .ctrl-btn-play {
+    width: 64px; height: 64px;
+    background: white;
+    color: black;
+    border: none;
+    border-radius: 50%;
+    font-size: 22px;
+    cursor: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    box-shadow: 0 0 40px rgba(255,255,255,0.2);
+  }
+  .ctrl-btn-play:hover { transform: scale(1.05); box-shadow: 0 0 60px rgba(255,255,255,0.3); }
+  .ctrl-btn-play.playing { animation: playPulse 2s ease infinite; }
+  @keyframes playPulse {
+    0%, 100% { box-shadow: 0 0 40px rgba(255,255,255,0.2); }
+    50% { box-shadow: 0 0 60px rgba(255,255,255,0.35), 0 0 100px rgba(255,255,255,0.1); }
+  }
+  .volume-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: center;
+  }
+  .volume-icon { font-size: 14px; color: var(--text-faint); }
+  .volume-slider {
+    -webkit-appearance: none;
+    width: 120px; height: 2px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 1px;
+    cursor: none;
+  }
+  .volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px; height: 12px;
+    background: white;
+    border-radius: 50%;
+  }
+
+  /* SYNC LATENCY BARS */
+  .sync-section {
+    padding: 40px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    margin-top: 32px;
+  }
+  .sync-title { font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--text-faint); margin-bottom: 20px; text-align: left; }
+  .sync-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+  }
+  .sync-name { font-size: 11px; font-weight: 600; color: var(--text-dim); width: 60px; text-align: right; flex-shrink: 0; }
+  .sync-bar-track { flex: 1; height: 20px; display: flex; align-items: center; gap: 2px; }
+  .sync-micro-bar {
+    flex: 1;
+    height: 20px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
+    position: relative;
+    overflow: hidden;
+  }
+  .sync-micro-fill {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: white;
+    border-radius: 2px;
+    transition: height 0.1s ease;
+  }
+  .sync-ms { font-size: 10px; font-weight: 700; color: white; width: 50px; }
+
+  /* CTA SECTION */
+  .cta-section {
+    padding: 140px 60px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .cta-section::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(255,255,255,0.04) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .cta-title {
+    font-size: clamp(42px, 7vw, 80px);
+    font-weight: 900;
+    letter-spacing: -3px;
+    line-height: 1.0;
+    margin-bottom: 24px;
+    background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.5) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .cta-sub { font-size: 16px; color: var(--text-dim); font-weight: 300; margin-bottom: 48px; }
+
+  /* ROOM CODE INPUT */
+  .room-join-widget {
+    display: flex;
+    gap: 12px;
+    max-width: 480px;
+    margin: 0 auto 24px;
+  }
+  .room-input {
+    flex: 1;
+    padding: 16px 24px;
+    background: var(--surface);
+    border: 1px solid var(--border-bright);
+    border-radius: 100px;
+    color: white;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.3s;
+  }
+  .room-input::placeholder { letter-spacing: 1px; text-transform: none; color: var(--text-faint); font-weight: 400; }
+  .room-input:focus { border-color: rgba(255,255,255,0.4); }
+  .join-btn {
+    padding: 16px 32px;
+    background: white;
+    color: black;
+    border: none;
+    border-radius: 100px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: none;
+    transition: all 0.3s;
+    white-space: nowrap;
+  }
+  .join-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 40px rgba(255,255,255,0.15); }
+  .or-divider { font-size: 12px; color: var(--text-faint); margin: 16px 0; }
+
+  /* FOOTER */
+  footer {
+    padding: 60px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .footer-logo {
+    font-size: 20px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.4) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .footer-copy { font-size: 12px; color: var(--text-faint); }
+  .footer-links { display: flex; gap: 32px; }
+  .footer-links a { font-size: 12px; color: var(--text-faint); text-decoration: none; transition: color 0.3s; }
+  .footer-links a:hover { color: var(--text-dim); }
+
+  /* SCROLL REVEAL */
+  .reveal {
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+  }
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* FLOATING PARTICLES */
+  .particles { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .particle {
+    position: absolute;
+    width: 1px; height: 1px;
+    background: rgba(255,255,255,0.4);
+    border-radius: 50%;
+    animation: floatParticle var(--dur) linear infinite;
+    animation-delay: var(--delay);
+  }
+  @keyframes floatParticle {
+    from { transform: translateY(100vh) scale(0); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    to { transform: translateY(-100px) scale(3); opacity: 0; }
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    nav { padding: 20px 24px; }
+    nav.scrolled { padding: 14px 24px; }
+    .nav-links { display: none; }
+    .stats-section { grid-template-columns: repeat(2, 1fr); }
+    .features-grid { grid-template-columns: 1fr; }
+    .how-inner { grid-template-columns: 1fr; gap: 48px; }
+    footer { flex-direction: column; gap: 24px; text-align: center; }
+    .features-section, .how-section, .player-section, .cta-section { padding: 80px 24px; }
+    .stats-section { padding: 60px 24px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- CURSOR -->
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- NAV -->
+<nav id="nav">
+  <div class="nav-logo">VANI<span>.</span></div>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#player">Player</a></li>
+    <li><a href="/room">Launch Room</a></li>
+  </ul>
+  <button class="nav-cta" onclick="window.location.href='/room'">Create Room</button>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg">
+    <canvas id="heroBgCanvas"></canvas>
+  </div>
+  <div class="grid-lines"></div>
+  <div class="particles" id="particles"></div>
+
+  <div class="hero-badge">✦ Now in Beta — Real-time Audio Sync</div>
+  <h1>
+    <span class="line1">SYNCHRONIZED</span>
+    <span class="line2">LISTENING.</span>
+  </h1>
+  <p class="hero-sub">Host a room. Share a code. Listen together — perfectly in sync down to the nanosecond.</p>
+  <div class="hero-actions">
+    <a href="/room" class="btn-primary">
+      <span>Create a Room</span>
+      <span>→</span>
+    </a>
+    <a href="#how" class="btn-secondary">
+      <span>See how it works</span>
+    </a>
+  </div>
+
+  <!-- MINI PLAYER PREVIEW -->
+  <div class="hero-visualizer">
+    <div class="visualizer-card">
+      <div class="vis-header">
+        <div class="vis-title">Live Room · VANI-4829</div>
+        <div class="vis-status"><div class="vis-dot"></div> 12 listeners synced</div>
+      </div>
+      <div class="wave-container" id="heroWave"></div>
+      <div class="latency-display">
+        <div class="latency-label">HOST</div>
+        <div class="latency-bar-wrap"><div class="latency-bar-fill" style="animation-duration:1.8s;"></div></div>
+        <div class="latency-val" id="hostLatVal">~0ms</div>
+      </div>
+      <div class="latency-display">
+        <div class="latency-label">YOU</div>
+        <div class="latency-bar-wrap"><div class="latency-bar-fill" style="animation-duration:2.1s;animation-delay:0.3s;"></div></div>
+        <div class="latency-val" id="listenerLatVal">~0ms</div>
+      </div>
+      <div class="vis-meta">
+        <div class="vis-meta-item">Track: <span>Midnight Echo</span></div>
+        <div class="vis-meta-item">Sync: <span id="syncPct">99.97%</span></div>
+        <div class="vis-meta-item">Online: <span>12 / 12</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<section class="stats-section reveal">
+  <div class="stat-item">
+    <span class="stat-num">&lt;1</span>
+    <div class="stat-label">Millisecond Sync</div>
+  </div>
+  <div class="stat-item">
+    <span class="stat-num">∞</span>
+    <div class="stat-label">Listeners per Room</div>
+  </div>
+  <div class="stat-item">
+    <span class="stat-num">256</span>
+    <div class="stat-label">Audio Quality (kbps)</div>
+  </div>
+  <div class="stat-item">
+    <span class="stat-num">0</span>
+    <div class="stat-label">Lag Tolerance</div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features-section" id="features">
+  <div class="section-label reveal">✦ Features</div>
+  <h2 class="section-title reveal">Everything you need for perfect sync.</h2>
+  <div class="features-grid reveal">
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <div class="feature-name">Nanosecond Precision</div>
+      <div class="feature-desc">Our proprietary sync engine aligns every listener's playhead with atomic-clock precision. No drift. Ever.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🎛️</div>
+      <div class="feature-name">Full Host Controls</div>
+      <div class="feature-desc">The host controls play, pause, seek, and volume for the entire room. Listeners follow in real time.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔒</div>
+      <div class="feature-name">Private Room Codes</div>
+      <div class="feature-desc">Every room gets a unique 6-character code. Share it with anyone and they join instantly.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📡</div>
+      <div class="feature-name">Live Latency Monitor</div>
+      <div class="feature-desc">Watch real-time audio wave animations that visually confirm sync between host and all listeners.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🎨</div>
+      <div class="feature-name">Deep Customisation</div>
+      <div class="feature-desc">Personalise your room with display names, avatars, and theme preferences. Make it yours.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">👥</div>
+      <div class="feature-name">Listener Presence</div>
+      <div class="feature-desc">See who's online in real time. Watch listeners join and leave with smooth animated transitions.</div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how-section" id="how">
+  <div class="how-inner">
+    <div>
+      <div class="section-label reveal">✦ Process</div>
+      <h2 class="section-title reveal">Three steps to synchronized bliss.</h2>
+      <div class="steps-list">
+        <div class="step-item reveal">
+          <div class="step-num">01</div>
+          <div>
+            <div class="step-content-title">Create your room</div>
+            <div class="step-content-desc">Click "Create Room" to generate a private session with a unique 6-character code instantly.</div>
+          </div>
+        </div>
+        <div class="step-item reveal">
+          <div class="step-num">02</div>
+          <div>
+            <div class="step-content-title">Share the code</div>
+            <div class="step-content-desc">Share your room code with friends. They enter it and join within milliseconds.</div>
+          </div>
+        </div>
+        <div class="step-item reveal">
+          <div class="step-num">03</div>
+          <div>
+            <div class="step-content-title">Hit play — together</div>
+            <div class="step-content-desc">The host controls the music. Every listener hears the exact same thing at the exact same moment.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="room-preview reveal">
+      <div class="room-preview-header">
+        <div class="dot-row">
+          <div class="dot dot-r"></div>
+          <div class="dot dot-y"></div>
+          <div class="dot dot-g"></div>
+        </div>
+      </div>
+      <div class="room-preview-body">
+        <div class="preview-track active">
+          <div class="track-thumb">🎵</div>
+          <div class="track-info">
+            <div class="track-name">Midnight Echo</div>
+            <div class="track-artist">The Waveforms</div>
+          </div>
+          <div class="mini-wave" id="miniWave"></div>
+          <div class="track-time">2:34</div>
+        </div>
+        <div class="preview-track">
+          <div class="track-thumb">🎶</div>
+          <div class="track-info">
+            <div class="track-name">Lucid Dream State</div>
+            <div class="track-artist">Ambient Core</div>
+          </div>
+          <div class="track-time">3:47</div>
+        </div>
+        <div class="preview-listeners">
+          <div class="listener-avatars">
+            <div class="listener-avatar">A</div>
+            <div class="listener-avatar">K</div>
+            <div class="listener-avatar">S</div>
+            <div class="listener-avatar">+9</div>
+          </div>
+          <span>12 listening now</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- INTERACTIVE PLAYER -->
+<section class="player-section" id="player">
+  <div class="section-label reveal">✦ Player</div>
+  <h2 class="section-title reveal" style="margin:0 auto 0;text-align:center;max-width:400px;">Try the player.</h2>
+  <div class="player-card reveal">
+    <div class="player-track-info">
+      <div class="player-track-name" id="pTrackName">Midnight Echo</div>
+      <div class="player-artist" id="pArtist">The Waveforms · Demo Mode</div>
+    </div>
+    <div class="player-wave" id="playerWave"></div>
+    <div class="player-progress-wrap" id="progressWrap">
+      <div class="player-progress-fill" id="progressFill"></div>
+    </div>
+    <div class="player-times">
+      <span id="pCurrent">1:23</span>
+      <span id="pDuration">3:58</span>
+    </div>
+    <div class="player-controls">
+      <button class="ctrl-btn" onclick="prevTrack()" title="Previous">⏮</button>
+      <button class="ctrl-btn" onclick="shuffleTrack()" title="Shuffle">⇄</button>
+      <button class="ctrl-btn-play" id="playBtn" onclick="togglePlay()">▶</button>
+      <button class="ctrl-btn" onclick="repeatTrack()" title="Repeat">↺</button>
+      <button class="ctrl-btn" onclick="nextTrack()" title="Next">⏭</button>
+    </div>
+    <div class="volume-wrap">
+      <span class="volume-icon">🔈</span>
+      <input type="range" class="volume-slider" min="0" max="100" value="80" oninput="setVolume(this.value)">
+      <span class="volume-icon">🔊</span>
+    </div>
+
+    <!-- SYNC LATENCY BARS -->
+    <div class="sync-section">
+      <div class="sync-title">⚡ Real-time Sync Monitor</div>
+      <div class="sync-row">
+        <div class="sync-name">HOST</div>
+        <div class="sync-bar-track" id="hostSyncBars"></div>
+        <div class="sync-ms" id="hostMs">0.000ms</div>
+      </div>
+      <div class="sync-row">
+        <div class="sync-name">YOU</div>
+        <div class="sync-bar-track" id="youSyncBars"></div>
+        <div class="sync-ms" id="youMs">0.000ms</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="section-label reveal">✦ Get Started</div>
+  <h2 class="cta-title reveal">Start listening<br>together.</h2>
+  <p class="cta-sub reveal">No account needed. Just a room code and a vibe.</p>
+  <div class="room-join-widget reveal">
+    <input type="text" class="room-input" id="joinCodeInput" placeholder="Enter room code" maxlength="6">
+    <button class="join-btn" onclick="joinRoom()">Join</button>
+  </div>
+  <div class="or-divider reveal">— or —</div>
+  <a href="/room" class="btn-primary reveal" style="display:inline-flex;margin-top:4px;">Create New Room →</a>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">VANI.</div>
+  <div class="footer-copy">© 2025 VANI Audio Sync. All rights reserved.</div>
+  <div class="footer-links">
+    <a href="#">Privacy</a>
+    <a href="#">Terms</a>
+    <a href="#">Contact</a>
+    <a href="/room">App</a>
+  </div>
+</footer>
+
+<script>
+// CURSOR
+const cursor = document.getElementById('cursor');
+const ring = document.getElementById('cursorRing');
+let mx = 0, my = 0, rx = 0, ry = 0;
+document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; cursor.style.left = mx+'px'; cursor.style.top = my+'px'; });
+function animRing() {
+  rx += (mx - rx) * 0.12; ry += (my - ry) * 0.12;
+  ring.style.left = rx+'px'; ring.style.top = ry+'px';
+  requestAnimationFrame(animRing);
+}
+animRing();
+document.querySelectorAll('button,a,input').forEach(el => {
+  el.addEventListener('mouseenter', () => { ring.style.transform = 'translate(-50%,-50%) scale(1.6)'; ring.style.borderColor='rgba(255,255,255,0.8)'; });
+  el.addEventListener('mouseleave', () => { ring.style.transform = 'translate(-50%,-50%) scale(1)'; ring.style.borderColor='rgba(255,255,255,0.5)'; });
+});
+
+// NAV SCROLL
+window.addEventListener('scroll', () => {
+  document.getElementById('nav').classList.toggle('scrolled', window.scrollY > 40);
+});
+
+// HERO WAVE
+function buildWave(containerId, count, minH, maxH) {
+  const c = document.getElementById(containerId);
+  if (!c) return;
+  c.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const b = document.createElement('div');
+    b.className = 'wave-bar';
+    const h = Math.floor(Math.random()*(maxH-minH)+minH);
+    b.style.setProperty('--h', h+'px');
+    b.style.setProperty('--dur', (0.6+Math.random()*1.2)+'s');
+    b.style.setProperty('--delay', (Math.random()*1.5)+'s');
+    c.appendChild(b);
+  }
+}
+buildWave('heroWave', 80, 10, 60);
+
+// MINI WAVE
+function buildMiniWave() {
+  const c = document.getElementById('miniWave');
+  if (!c) return;
+  for (let i = 0; i < 8; i++) {
+    const b = document.createElement('div');
+    b.className = 'mini-bar';
+    b.style.setProperty('--h', Math.floor(Math.random()*14+4)+'px');
+    b.style.setProperty('--dur', (0.5+Math.random()*0.8)+'s');
+    b.style.setProperty('--delay', (Math.random()*0.8)+'s');
+    c.appendChild(b);
+  }
+}
+buildMiniWave();
+
+// PLAYER WAVE
+function buildPlayerWave() {
+  const c = document.getElementById('playerWave');
+  if (!c) return;
+  for (let i = 0; i < 60; i++) {
+    const b = document.createElement('div');
+    b.className = 'player-bar';
+    const h = Math.floor(Math.random()*70+10);
+    b.style.setProperty('--h', h+'px');
+    b.style.setProperty('--dur', (0.5+Math.random()*1.5)+'s');
+    b.style.setProperty('--delay', (Math.random()*1.5)+'s');
+    c.appendChild(b);
+  }
+}
+buildPlayerWave();
+
+// SYNC BARS
+function buildSyncBars(id, count) {
+  const c = document.getElementById(id);
+  if (!c) return;
+  for (let i = 0; i < count; i++) {
+    const wrap = document.createElement('div');
+    wrap.className = 'sync-micro-bar';
+    const fill = document.createElement('div');
+    fill.className = 'sync-micro-fill';
+    fill.style.height = Math.floor(Math.random()*60+10)+'%';
+    wrap.appendChild(fill);
+    c.appendChild(wrap);
+  }
+}
+buildSyncBars('hostSyncBars', 40);
+buildSyncBars('youSyncBars', 40);
+
+// SYNC ANIMATION
+function animateSyncBars(id, msId) {
+  const bars = document.querySelectorAll('#'+id+' .sync-micro-fill');
+  const msEl = document.getElementById(msId);
+  setInterval(() => {
+    bars.forEach(b => { b.style.height = Math.floor(Math.random()*80+10)+'%'; });
+    if (msEl) {
+      const v = (Math.random()*0.3).toFixed(3);
+      msEl.textContent = v+'ms';
+    }
+  }, 80);
+}
+animateSyncBars('hostSyncBars', 'hostMs');
+animateSyncBars('youSyncBars', 'youMs');
+
+// HERO LATENCY
+setInterval(() => {
+  const h = document.getElementById('hostLatVal');
+  const l = document.getElementById('listenerLatVal');
+  const s = document.getElementById('syncPct');
+  if (h) h.textContent = '~'+(Math.random()*0.2).toFixed(2)+'ms';
+  if (l) l.textContent = '~'+(Math.random()*0.3).toFixed(2)+'ms';
+  if (s) s.textContent = (99.9+Math.random()*0.09).toFixed(2)+'%';
+}, 500);
+
+// PLAYER
+let playing = false, progress = 35, vol = 80;
+const tracks = [
+  { name: 'Midnight Echo', artist: 'The Waveforms', dur: '3:58' },
+  { name: 'Lucid Dream State', artist: 'Ambient Core', dur: '4:22' },
+  { name: 'Parallel Horizon', artist: 'Static Garden', dur: '3:14' },
+];
+let trackIdx = 0;
+let playerInterval;
+
+function togglePlay() {
+  playing = !playing;
+  const btn = document.getElementById('playBtn');
+  if (btn) { btn.textContent = playing ? '⏸' : '▶'; btn.classList.toggle('playing', playing); }
+  if (playing) {
+    playerInterval = setInterval(() => {
+      progress = (progress + 0.05) % 100;
+      updateProgress();
+    }, 100);
+  } else {
+    clearInterval(playerInterval);
+  }
+}
+function updateProgress() {
+  const fill = document.getElementById('progressFill');
+  if (fill) fill.style.width = progress + '%';
+  const total = tracks[trackIdx];
+  const parts = total.dur.split(':');
+  const totalSecs = parseInt(parts[0])*60 + parseInt(parts[1]);
+  const cur = Math.floor((progress/100)*totalSecs);
+  const m = Math.floor(cur/60); const s = cur%60;
+  const el = document.getElementById('pCurrent');
+  if (el) el.textContent = m+':'+(s<10?'0':'')+s;
+}
+function nextTrack() { trackIdx = (trackIdx+1)%tracks.length; loadTrack(); }
+function prevTrack() { trackIdx = (trackIdx+tracks.length-1)%tracks.length; loadTrack(); }
+function loadTrack() {
+  const t = tracks[trackIdx];
+  document.getElementById('pTrackName').textContent = t.name;
+  document.getElementById('pArtist').textContent = t.artist + ' · Demo Mode';
+  document.getElementById('pDuration').textContent = t.dur;
+  progress = 0; updateProgress();
+}
+function shuffleTrack() { trackIdx = Math.floor(Math.random()*tracks.length); loadTrack(); }
+function repeatTrack() { progress = 0; updateProgress(); }
+function setVolume(v) { vol = v; }
+
+// PROGRESS CLICK
+document.getElementById('progressWrap')?.addEventListener('click', e => {
+  const rect = e.currentTarget.getBoundingClientRect();
+  progress = ((e.clientX - rect.left) / rect.width) * 100;
+  updateProgress();
+});
+
+// BG CANVAS
+const bgCanvas = document.getElementById('heroBgCanvas');
+if (bgCanvas) {
+  const ctx = bgCanvas.getContext('2d');
+  bgCanvas.width = window.innerWidth;
+  bgCanvas.height = window.innerHeight;
+  window.addEventListener('resize', () => { bgCanvas.width = window.innerWidth; bgCanvas.height = window.innerHeight; });
+  const bgBars = Array.from({length:120}, (_,i) => ({ x: (i/119)*bgCanvas.width, h: Math.random()*80+10, speed: Math.random()*0.5+0.2, phase: Math.random()*Math.PI*2 }));
+  let bgT = 0;
+  function drawBg() {
+    ctx.clearRect(0,0,bgCanvas.width,bgCanvas.height);
+    bgT += 0.02;
+    bgBars.forEach(b => {
+      const h = b.h * (0.5 + 0.5*Math.sin(bgT*b.speed + b.phase));
+      const y = bgCanvas.height/2;
+      ctx.beginPath();
+      ctx.roundRect(b.x-2, y-h, 3, h*2, 2);
+      ctx.fillStyle = `rgba(255,255,255,${0.3+0.7*(h/90)})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(drawBg);
+  }
+  drawBg();
+}
+
+// PARTICLES
+function spawnParticles() {
+  const container = document.getElementById('particles');
+  if (!container) return;
+  for (let i = 0; i < 30; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random()*100 + '%';
+    p.style.setProperty('--dur', (8+Math.random()*15)+'s');
+    p.style.setProperty('--delay', -(Math.random()*15)+'s');
+    container.appendChild(p);
+  }
+}
+spawnParticles();
+
+// SCROLL REVEAL
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// JOIN ROOM
+function joinRoom() {
+  const code = document.getElementById('joinCodeInput')?.value.trim().toUpperCase();
+  if (code.length >= 4) {
+    window.location.href = '/room?code=' + code + '&role=listener';
+  } else {
+    const input = document.getElementById('joinCodeInput');
+    if (input) { input.style.borderColor = 'rgba(255,80,80,0.5)'; setTimeout(() => input.style.borderColor = '', 1000); }
+  }
+}
+document.getElementById('joinCodeInput')?.addEventListener('keydown', e => { if (e.key==='Enter') joinRoom(); });
+</script>
+</body>
+</html>
