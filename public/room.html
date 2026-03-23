@@ -336,12 +336,22 @@ setInterval(() => {
 
 function getServerTime() { return performance.now() + serverTimeOffset; }
 
-const P=new URLSearchParams(location.search);
-let roomCode=P.get('code');
-let role=P.get('role')||'listener';
-let isHost=role==='host';
+function genCode(){return Array.from({length:6},()=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random()*32)]).join('');}
 
-if(!roomCode) window.location.href='/';
+const P=new URLSearchParams(location.search);
+let roomCode = P.get('code');
+let role = P.get('role');
+
+// If someone visits the app without a code, instantly make them a Host of a new room!
+if (!roomCode) {
+    roomCode = genCode();
+    role = 'host';
+    // Update the URL bar silently so they can copy the link later
+    window.history.replaceState(null, '', '?code=' + roomCode + '&role=host');
+}
+
+let isHost = (role === 'host');
+  
 
 let audioCtx=null, srcNode=null, analyser=null, gainNode=null;
 let audioBuffer=null;
